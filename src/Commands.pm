@@ -77,6 +77,11 @@ sub initHandlers {
 			[T("forceuse <inventory item #>"), T("craft arrows immediately from an item without using the skill")]
 			], \&cmdArrowCraft],
 		['as', T("Stop attacking a monster."), \&cmdAttackStop],
+		['attendance', [
+			T("Attendance System."),
+			["open", T("Attendance System")],
+			["request", T("Request the Current Day Reward")],
+			], \&cmdAttendance],
 		['autobuy', T("Initiate auto-buy AI sequence."), \&cmdAutoBuy],
 		['autosell', T("Initiate auto-sell AI sequence."), \&cmdAutoSell],
 		['autostorage', T("Initiate auto-storage AI sequence."), \&cmdAutoStorage],
@@ -87,6 +92,12 @@ sub initHandlers {
 			], \&cmdAuthorize],
 		['bangbang', T("Does a bangbang body turn."), \&cmdBangBang],
 		['bingbing', T("Does a bingbing body turn."), \&cmdBingBing],
+		['bank', [
+			T("Banking management."),
+			["open", T("Open Banking Interface")],
+			["deposit", T("Deposit Zeny in Banking")],
+			["withdraw", T("Withdraw Zeny from Banking")],
+			], \&cmdBank],
 		['bg', [
 			T("Send a message in the battlegrounds chat."),
 			[T("<message>"), T("send <message> in the battlegrounds chat")]
@@ -150,8 +161,12 @@ sub initHandlers {
 			[T("<key>"), T("displays value of <key>")],
 			[T("<key> <value>"), T("sets value of <key> to <value>")],
 			[T("<key> none"), T("unsets <key>")],
-			[T("<label.attribute> <value>"), T("set a new value for the specified configuration key through label")],
-			[T("<label.attribute> none"), T("unset the specified configuration key through label")]
+			[T("<label>.<attribute>"), T("displays value of the specified configuration key through label")],
+			[T("<label>.<attribute> <value>"), T("set a new value for the specified configuration key through label")],
+			[T("<label>.<attribute> none"), T("unset the specified configuration key through label")],
+			[T("<label>.block"), T("display the current value of the specified block")],
+			[T("<label>.block <value>"), T("set a new value for the specified block through <label>")],
+			[T("<label>block none"), T("unset the specified block through <label>")]
 			], \&cmdConf],
 		['connect', undef, \&cmdConnect],
 		['create', undef, \&cmdCreate],
@@ -178,7 +193,7 @@ sub initHandlers {
 		['doridori', T("Does a doridori head turn."), \&cmdDoriDori],
 		['drop', [
 			T("Drop an item from the inventory."),
-			[T("<inventory item #> [<amount>]"), T("drop an item from inventory")]
+			[T("<inventory_item_list> [<amount>]"), T("drop an item from inventory")]
 			], \&cmdDrop],
 		['dump', T("Dump the current packet receive buffer and quit."), \&cmdDump],
 		['dumpnow', T("Dump the current packet receive buffer without quitting."), \&cmdDumpNow],
@@ -192,6 +207,12 @@ sub initHandlers {
 			[T("<slotname> <inventory item #>"), T("equips the specified item on the specified slot")],
 			["slots", T("lists slot names")]
 			], \&cmdEquip],
+		['eqsw', [
+			T("Equip an switch item."),
+			[T("<inventory item #>"), T("equips the specified item")],
+			[T("<slotname> <inventory item #>"), T("equips the specified item on the specified slot")],
+			["slots", T("lists slot names")]
+			], \&cmdEquipSwitch],
 		['elemental', undef, \&cmdElemental],
 		['eval', [
 			T("Evaluate a Perl expression."),
@@ -243,6 +264,13 @@ sub initHandlers {
 			[T("skills add <skill #>"), T("add a skill point to the current homunculus skill")],
 			[T("desc <skill #>"), T("display a description of the specified homunculus skill")]
 			], \&cmdSlave],
+		['misc_conf', [
+			T("Send to Server Misc Configuration."),
+			["show_eq (on|off)", T("Allow / Disable Show Equipment Window")],
+			["call (on|off)", T("Allow / Disable being Summoned by Urgent Call or Marriage skills")],
+			["pet_feed (on|off)", T("Enable / Disable Pet Auto-Feed")],
+			["homun_feed (on|off)", T("Enable / Disable Homunculus Auto-Feed")],
+			], \&cmdMiscConf],
 		['merc', [
 			T("Interact with Mercenary."),
 			["s", T("display mercenary status")],
@@ -427,7 +455,11 @@ sub initHandlers {
 			["recompile", T("recompile portals")],
 			["add", T("add new portals: <map1> <x> <y> <map2> <x> <y>")],
 			], \&cmdPortalList],
-		['quit', T("Exit this program."), \&cmdQuit],
+		['quit', [
+			T("Exit this program."),
+			["", T("exit this program")],
+			["2", T("send a special package 'quit_request' to the server, then exit this program")],
+			], \&cmdQuit],
 		['rc', [
 			T("Reload source code files."),
 			["", T("reload functions.pl")],
@@ -445,10 +477,51 @@ sub initHandlers {
 			["", T("logout and login after 5 seconds")],
 			[T("<seconds>"), T("logout and login after <seconds>")]
 			], \&cmdRelog],
-		['repair', undef, \&cmdRepair],
+		['repair', [
+			T("Repair player's items."),
+			["", T("list of items available for repair")],
+			[T("<item #>"), T("repair the specified player's item")],
+			[T("cancel"), T("cancel repair item")],
+			], \&cmdRepair],
 		['respawn', T("Respawn back to the save point."), \&cmdRespawn],
-		['revive', undef, \&cmdRevive],
-		['rodex', undef, \&cmdRodex],
+		['revive', [
+			T("Use of the 'Token Of Siegfried' to self-revive."),
+			["", T("use of the 'Token Of Siegfried' to self-revive")],
+			["force", T("trying to self-revive using")],
+			["\"<item_name>\"", T("check <item_name> availability, then trying to self-revive")],
+			["<item_ID>", T("check <item_ID> availability, then trying to self-revive")],
+			], \&cmdRevive],
+		['rodex', [
+			T("rodex use (Ragnarok Online Delivery Express)"),
+			["open", T("open rodex mailbox")],
+			["close", T("close rodex mailbox")],
+			["list", T("list your first page of rodex mail")],
+			["nextpage", T("request and get the next page of rodex mail")],
+			["maillist", T("show ALL messages from ALL pages of rodex mail")],
+			["refresh", T("send request to refresh and update rodex mailbox")],
+			["read <mail_id>", T("open the selected Rodex mail")],
+			["getitems", T("request ang get items of current rodex mail")],
+			["getzeny", T("request ang get zeny of current rodex mail")],
+			["write <player_name|self|none>", T("open a box to start write a rodex mail")],
+			["settarget <player_name|self>", T("set target of rodex mail")],
+			["itemslist", T("show current list of items in mail box that you are writting")],
+			["settitle <title>", T("show current list of items in mail box that you are writting")],
+			["setbody <body>", T("set rodex mail body")],
+			["setzeny <zeny_amount>", T("set zeny amount in rodex mail")],
+			["add <item #> <amount>", T("add a item from inventory in rodex mail box")],
+			["remove <item #> <amount>", T("remove a item or amount of item from rodex mail")],
+			["send", T("send finished rodex mail")],
+			["cancel", T("close rodex mail write box")],
+			["delete <mail_id>", T("delete selected rodex mail")]
+			], \&cmdRodex],
+		['roulette', [
+			T("Roulette System."),
+			["open", T("Open Roulette System")],
+			["info", T("Send Roulette System Info Request")],
+			["close", T("Close Roulette System")],
+			["start", T("Start Roulette System")],
+			["claim", T("Claim Reward in Roulette System")],
+			], \&cmdRoulette],
 		['s', T("Display character status."), \&cmdStatus],
 		['sell', [
 			T("Sell items to an NPC."),
@@ -522,6 +595,7 @@ sub initHandlers {
 			T("Switch configuration file."),
 			[T("<filename>"), T("switches configuration file to <filename>")]
 			], \&cmdSwitchConf],
+		['switch_equips', T("Switch Equips"), \&cmdSwitchEquips],
 		['take', [
 			T("Take an item from the ground."),
 			[T("<item #>"), T("take an item from the ground")],
@@ -564,6 +638,10 @@ sub initHandlers {
 			T("Unequp an item."),
 			[T("<inventory item #>"), T("unequips the specified item")]
 			], \&cmdUnequip],
+		['uneqsw', [
+			T("Unequp an switch item."),
+			[T("<inventory item #>"), T("unequips the specified item")]
+			], \&cmdUnequipSwitch],
 		['vender', [
 			T("Buy items from vending shops."),
 			[T("<vender #>"), T("enter vender shop")],
@@ -573,7 +651,7 @@ sub initHandlers {
 		['verbose', T("Toggle verbose on/off."), \&cmdVerbose],
 		['version', T("Display the version of openkore."), \&cmdVersion],
 		['vl', T("List nearby vending shops."), \&cmdVenderList],
-		['vs', undef, \&cmdShopInfoSelf],
+		['vs', T("Display the status of your vending shop."), \&cmdShopInfoSelf],
 		['warp', [
 			T("Open warp portal."),
 			["list", T("lists available warp portals to open")],
@@ -660,7 +738,7 @@ sub initHandlers {
 			], \&cmdQuest],
 		['showeq', [
 			T("Equipment showing."),
-			[T("<player>"), T("request equipment information for player")],
+			[T("p <index|name|partialname>"), T("request equipment information for player")],
 			["me on", T("enables equipment showing")],
 			["me off", T("disables equipment showing")]
 			], \&cmdShowEquip],
@@ -690,7 +768,15 @@ sub initHandlers {
 		['cm', undef, \&cmdExchangeItem],
 		['analysis', undef, \&cmdExchangeItem],
 
-		['searchstore', undef, \&cmdSearchStore],
+		['searchstore', [
+			T("Universal catalog command"),
+			["close", T("Closes search store catalog")],
+			["next", T("Requests catalog next page")],
+			["view <page #>", T("Shows catalog page # (0-indexed)")],
+			["search [match|exact] ...", T("Searches for an item")],
+			["select <page #> <store #>", T("Selects a store")],
+			["buy [view|end|<item #> [<amount>]]", T("Buys from a store using Universal Catalog Gold")],
+			], \&cmdSearchStore],
 		['pause', [
 			T("Delay the next console commands."),
 			[T("<seconds>"), T("delay the next console commands by a specified number of seconds (default: 1 sec.)")]
@@ -1113,6 +1199,25 @@ sub cmdAuthorize {
 	}
 }
 
+sub cmdAttendance {
+	my (undef, $args) = @_;
+	my ($command) = parseArgs( $args );
+
+	if (!$net || $net->getState() != Network::IN_GAME) {
+		error TF("You must be logged in the game to use this command '%s'\n", shift);
+		return;
+	}
+
+	if ( $command eq "open" ) {
+		$messageSender->sendOpenUIRequest(5);
+	} elsif ( $command eq "request" ) {
+		$messageSender->sendAttendanceRewardRequest();
+	} else {
+		error T("Syntax Error in function 'attendance'\n" .
+				"attendance <open|request>\n");
+	}
+}
+
 sub cmdAutoBuy {
 	message T("Initiating auto-buy.\n");
 	AI::queue("buyAuto");
@@ -1174,6 +1279,43 @@ sub cmdBingBing {
 	}
 	my $bodydir = ($char->{look}{body} + 1) % 8;
 	$messageSender->sendLook($bodydir, $char->{look}{head});
+}
+
+sub cmdBank {
+	my (undef, $args) = @_;
+	my ($command, $zeny) = parseArgs( $args );
+
+	if (!$net || $net->getState() != Network::IN_GAME) {
+		error TF("You must be logged in the game to use this command '%s'\n", shift);
+		return;
+	}
+
+	if ( $command eq "open" ) {
+		$messageSender->sendBankingCheck($accountID);
+	} elsif ( ( $command eq "deposit" || $command eq "withdraw" ) && !$bankingopened ) {
+		error T("Bank: You have to open bank before try to use the commands.\n");
+	} elsif ( $command eq "deposit" ) {
+		if( $zeny =~ /\d+/ ) {
+			if( $zeny <= $char->{zeny} ) {
+				$messageSender->sendBankingDeposit($accountID, $zeny);
+			} else {
+				error T("Bank: You don't have that amount of zeny to DEPOSIT in Bank.\n");
+			}
+		} else {
+			error T("Syntax Error in function 'bank' (Banking)\n" .
+				"bank deposit <amount>\n");
+		}
+	} elsif ( $command eq "withdraw" ) {
+		if( $zeny =~ /\d+/ ) {
+			$messageSender->sendBankingWithdraw($accountID, $zeny);
+		} else {
+			error T("Syntax Error in function 'bank' (Banking)\n" .
+				"bank withdraw <amount>\n");
+		}
+	} else {
+		error T("Syntax Error in function 'bank' (Banking)\n" .
+				"bank <open|deposit|withdraw>\n");
+	}
 }
 
 sub cmdBuy {
@@ -2189,11 +2331,12 @@ sub cmdDrop {
 		return;
 	}
 	my (undef, $args) = @_;
-	my ($arg1) = $args =~ /^([\d,-]+)/;
+	my ($arg1) = $args =~ /^(\d+[\d,-]*)/;
 	my ($arg2) = $args =~ /^[\d,-]+ (\d+)$/;
-	if (($arg1 eq "") or ($arg1 < 0)) {
+
+	if ($arg1 eq "") {
 		error T("Syntax Error in function 'drop' (Drop Inventory Item)\n" .
-			"Usage: drop <item #> [<amount>]\n");
+			"Usage: drop <inventory_item_list> [<amount>]\n");
 	} else {
 		my @temp = split(/,/, $arg1);
 		@temp = grep(!/^$/, @temp); # Remove empty entries
@@ -2253,7 +2396,6 @@ sub cmdEquip {
 
 	if ($arg1 eq "") {
 		cmdEquip_list();
-		cmdEquipsw_list();
 		return;
 	}
 
@@ -2307,6 +2449,55 @@ sub cmdEquip_list {
 			message sprintf("%-15s: %s\n", $slot, $name), "list";
 	}
 	message "================================\n", "info";
+}
+
+sub cmdEquipSwitch {
+	# Equip an item
+	my (undef, $args) = @_;
+	my ($arg1,$arg2) = $args =~ /^(\S+)\s*(.*)/;
+	my $slot;
+	my $item;
+
+	if ($arg1 eq "") {
+		cmdEquipsw_list();
+		return;
+	}
+
+	if ($arg1 eq "slots") {
+		# Translation Comment: List of equiped items on each slot
+		message T("Slots:\n") . join("\n", @Actor::Item::slots). "\n", "list";
+		return;
+	}
+
+	if (!$net || $net->getState() != Network::IN_GAME) {
+		error TF("You must be logged in the game to use this command '%s'\n", 'eqsw ' .$args);
+		return;
+	}
+
+	if ($equipSlot_rlut{$arg1}) {
+		$slot = $arg1;
+	} else {
+		$arg1 .= " $arg2" if $arg2;
+	}
+
+	$item = Actor::Item::get(defined $slot ? $arg2 : $arg1, undef, 1);
+	if (!$item) {
+		$args =~ s/^($slot)\s//g if ($slot);
+		error TF("No such non-equipped Inventory Item: %s\n", $args);
+		return;
+	}
+
+	if (!$item->{type_equip} && $item->{type} != 10 && $item->{type} != 16 && $item->{type} != 17 && $item->{type} != 8) {
+		error TF("Inventory Item %s (%s) can't be equipped.\n",
+			$item->{name}, $item->{binID});
+		return;
+	}
+
+	if ($slot) {
+		$item->equip_switch_slot($slot);
+	} else {
+		$item->equip_switch();
+	}
 }
 
 sub cmdEquipsw_list {
@@ -2562,12 +2753,12 @@ sub cmdFriend {
 				error TF("%s is already your friend\n", $player->{name});
 			} else {
 				message TF("Requesting %s to be your friend\n", $player->{name});
-				$messageSender->sendFriendRequest($players{$playersID[$arg2]}{name});
+				$messageSender->sendFriendRequest($player->{name});
 			}
 		}
 
 	} elsif ($arg1 eq "remove") {
-		if ($arg2 < 1 || $arg2 > @friendsID) {
+		if ($arg2 !~ /^\d+$/ || $arg2 < 1 || $arg2 > @friendsID) {
 			error TF("Friend #%s does not exist\n", $arg2);
 		} else {
 			$arg2--;
@@ -2594,7 +2785,7 @@ sub cmdFriend {
 		}
 
 	} elsif ($arg1 eq "pm") {
-		if ($arg2 < 1 || $arg2 > @friendsID) {
+		if ($arg2 !~ /^\d+$/ || $arg2 < 1 || $arg2 > @friendsID) {
 			error TF("Friend #%s does not exist\n", $arg2);
 		} else {
 			$arg2--;
@@ -2686,7 +2877,7 @@ sub cmdSlave {
 		"Range: \@>>     Skill pt: \@>>>     Contract End:  \@<<<<<<<<<<\n"),
 		[$slave->{'name'}, $hp_string,
 		$slave->{'actorType'}, $sp_string,
-		$jobs_lut{$slave->{'jobId'}},
+		$jobs_lut{$slave->{'jobID'}},
 		$slave->{'level'}, $exp_string,
 		$slave->{'atk'}, $slave->{'matk'}, $hunger_string,
 		$slave->{'hit'}, $slave->{'critical'}, $intimacy_label, $intimacy_string,
@@ -2888,6 +3079,31 @@ sub cmdSlave {
 
  	} else {
 		error TF("Usage: %s <feed | s | status | move | standby | ai | aiv | skills | delete | rename>\n", $string);
+	}
+}
+
+sub cmdMiscConf {
+	my (undef, $args) = @_;
+	my ($command, $flag) = parseArgs( $args );
+
+	if (!$net || $net->getState() != Network::IN_GAME) {
+		error TF("You must be logged in the game to use this command '%s'\n", shift);
+		return;
+	}
+
+	my $check = ($flag eq 'on') ? 1 : 0;
+
+	if ( $command eq "show_eq" ) {
+		$messageSender->sendMiscConfigSet(0, $check);
+	} elsif ( $command eq "call" ) {
+		$messageSender->sendMiscConfigSet(1, $check);
+	} elsif ( $command eq "pet_feed" ) {
+		$messageSender->sendMiscConfigSet(2, $check);
+	} elsif ( $command eq "homun_feed" ) {
+		$messageSender->sendMiscConfigSet(3, $check);
+	} else {
+		error T("Syntax Error in function 'misc_conf' (Misc Configuration)\n" .
+				"misc_conf <show_eq|call|pet_feed|homun_feed> <on|off>\n");
 	}
 }
 
@@ -3346,7 +3562,7 @@ sub helpIndent {
 	my @words;
 	my $length = 0;
 
-	$message = center(TF(" Help for '%s' ", $cmd), 79, "=")."\n";
+	$message = center(TF(" Help for '%s' ", $cmd), 119, "=")."\n";
 	$message .= shift(@tmp) . "\n";
 
 	foreach (@tmp) {
@@ -3357,12 +3573,12 @@ sub helpIndent {
 	my $pad = sprintf("%-${padsize}s", '');
 
 	foreach (@tmp) {
-		if ($padsize + length($_->[1]) > 79) {
+		if ($padsize + length($_->[1]) > 120) {
 			@words = split(/ /, $_->[1]);
 			$message .= sprintf("$cmd %-${length}s    ", $_->[0]);
 			$messageTmp = '';
 			foreach my $word (@words) {
-				if ($padsize + length($messageTmp) + length($word) + 1 > 79) {
+				if ($padsize + length($messageTmp) + length($word) + 1 > 119) {
 					$message .= $messageTmp . "\n$pad";
 					$messageTmp = "$word ";
 				} else {
@@ -3375,7 +3591,7 @@ sub helpIndent {
 			$message .= sprintf($pattern, $_->[0], $_->[1]);
 		}
 	}
-	$message .= "=" x 79 . "\n";
+	$message .= "=" x 119 . "\n";
 	message $message, "list";
 }
 
@@ -4699,6 +4915,10 @@ sub cmdPrivateMessage {
 }
 
 sub cmdQuit {
+	my (undef, $args) = @_;
+	if ($args eq "2") {
+		$messageSender->sendQuit();
+	}
 	quit();
 }
 
@@ -4760,18 +4980,42 @@ sub cmdRepair {
 		error TF("You must be logged in the game to use this command '%s'\n", shift);
 		return;
 	}
-	my (undef, $listID) = @_;
-	if ($listID =~ /^\d+$/) {
-		if ($repairList->[$listID]) {
-			$messageSender->sendRepairItem($repairList->[$listID]);
-			my $name = itemNameSimple($repairList->[$listID]);
-			message TF("Attempting to repair item: %s\n", $name);
-		} else {
-			error TF("Item with index: %s does either not exist in the 'Repair List' or the list is empty.\n", $listID);
+	my (undef, $binID) = @_;
+	if (!$repairList) {
+		error T("'Repair List' is empty.\n");
+
+	} elsif ($binID eq "") {
+		my $msg = center(T(" Repair List "), 80, '-') ."\n".
+			T("   # Short name                     Full name\n");
+		for (my $i = 0; $i < @{$repairList}; $i++) {
+			next if ($repairList->[$i] eq "");
+			my $shortName = itemNameSimple($repairList->[$i]{nameID});
+			$msg .= sprintf("%4d %-30s %s\n", $i, $shortName, $repairList->[$i]->{name});
 		}
+		$msg .= ('-'x80) . "\n";
+		message $msg, "list";
+
+	} elsif ($binID =~ /^\d+$/) {
+		if ($repairList->[$binID]) {
+			my $shortName = itemNameSimple($repairList->[$binID]{nameID});
+			message TF("Attempting to repair item: %s (%d)\n", $shortName, $binID);
+			$messageSender->sendRepairItem($repairList->[$binID]);
+		} else {
+			error TF("Item with index: %s does either not exist in the 'Repair List'.\n", $binID);
+		}
+
+	} elsif ($binID eq "cancel") {
+		message T("Cancel repair item.\n");
+		my %cancel = (
+			index => 65535, # 0xFFFF
+		);
+		$messageSender->sendRepairItem(\%cancel);
+
 	} else {
-		error T("Syntax Error in function 'repair' (Repair player's items.)\n" .
-			"Usage: repair [Repair List index]\n");
+		error T("Syntax Error in function 'repair' (Repair player's items)\n" .
+			"Usage: repair\n" .
+			"       repair <item #>\n" .
+			"       repair cancel\n");
 	}
 }
 
@@ -4923,8 +5167,8 @@ sub cmdSit {
 		error TF("You must be logged in the game to use this command '%s'\n", shift);
 		return;
 	}
-	if ($char->{skills}{NV_BASIC}{lv} < 3 || $char->{skills}{SU_BASIC_SKILL}{lv} == 1) {
-		error T("Basic Skill level 3 is required in order to sit or stand.")."\n";
+	if ($char->{skills}{NV_BASIC}{lv} < 3 && $char->{skills}{SU_BASIC_SKILL}{lv} < 1) {
+		error T("Basic Skill level 3 or New Basic Skill (Doram) is required in order to sit or stand.")."\n";
 		return;
 	}
 	$ai_v{sitAuto_forcedBySitCommand} = 1;
@@ -5337,11 +5581,11 @@ sub cmdStore {
 
 	if ($arg1 eq "" && $ai_v{'npc_talk'}{'talk'} ne 'buy_or_sell') {
 		my $msg = center(TF(" Store List (%s) ", $storeList->{npcName}), 54, '-') ."\n".
-			T("#  Name                    Type                  Price\n");
+			T("#  Name                    Type                  Price   Amnt\n");
 		foreach my $item (@$storeList) {
 			$msg .= swrite(
-				"@< @<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<  @>>>>>>>>>z",
-				[$item->{binID}, $item->{name}, $itemTypes_lut{$item->{type}}, $item->{price}]);
+				"@< @<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<  @>>>>>>>>>z   @<<<<<",
+				[$item->{binID}, $item->{name}, $itemTypes_lut{$item->{type}}, $item->{price}, $item->{amount}]);
 		}
 		$msg .= "Store list is empty.\n" if !$storeList->size;
 		$msg .= ('-'x54) . "\n";
@@ -5375,6 +5619,15 @@ sub cmdSwitchConf {
 		switchConfigFile($filename);
 		message TF("Switched config file to \"%s\".\n", $filename), "system";
 	}
+}
+
+sub cmdSwitchEquips {
+	if (!$net || $net->getState() != Network::IN_GAME) {
+		error TF("You must be logged in the game to use this command '%s'\n", shift);
+		return;
+	}
+
+	$messageSender->sendEquipSwitchRun();
 }
 
 sub cmdTake {
@@ -5727,6 +5980,54 @@ sub cmdUnequip {
 	} else {
 		$item->unequip();
 	}
+}
+
+sub cmdUnequipSwitch {
+
+	# unequip an item
+	my (undef, $args) = @_;
+	my ($arg1,$arg2) = $args =~ /^(\S+)\s*(.*)/;
+	my $slot;
+	my $item;
+
+	if ($arg1 eq "") {
+		cmdEquipsw_list();
+		return;
+	}
+
+	if ($arg1 eq "slots") {
+		# Translation Comment: List of equiped items on each slot
+		message T("Slots:\n") . join("\n", @Actor::Item::slots). "\n", "list";
+		return;
+	}
+
+	if (!$net || $net->getState() != Network::IN_GAME) {
+		error TF("You must be logged in the game to use this command '%s'\n", 'eq ' .$args);
+		return;
+	}
+
+	if ($equipSlot_rlut{$arg1}) {
+		$slot = $arg1;
+	} else {
+		$arg1 .= " $arg2" if $arg2;
+	}
+
+	$item = Actor::Item::get(defined $slot ? $arg2 : $arg1, undef, 0);
+
+	if (!$item) {
+		$args =~ s/^($slot)\s//g if ($slot);
+		$slot = T("undefined") unless ($slot);
+		error TF("No such equipped Inventory Item: %s in slot: %s\n", $args, $slot);
+		return;
+	}
+
+	if (!$item->{type_equip} && $item->{type} != 10 && $item->{type} != 16 && $item->{type} != 17) {
+		error TF("Inventory Item %s (%s) can't be unequipped.\n",
+			$item->{name}, $item->{binID});
+		return;
+	}
+
+	$item->unequip_switch();
 }
 
 sub cmdUseItemOnMonster {
@@ -6517,7 +6818,7 @@ sub cmdShowEquip {
 			message T("Usage: showeq p <index|name|partialname>\n");
 		}
 	} elsif ($args[0] eq 'me') {
-		$messageSender->sendShowEquipTickbox($args[1] eq 'on');
+		$messageSender->sendMiscConfigSet(0, $args[1] eq 'on');
 	} else {
 		message T("Usage: showeq [p <index|name|partialname>] | [me <on|off>]\n"), "info";
 	}
@@ -6792,11 +7093,19 @@ sub cmdRodex {
 
 		} elsif ($arg2 eq "") {
 			error T("Syntax Error in function 'rodex write' (Start writting a rodex mail)\n" .
-				"Usage: rodex write <player_name>\n");
+				"Usage: rodex write <player_name|self|none>\n");
 			return;
+		} elsif ($arg2 eq "self") {
+			debug "Send rodex mail to yourself\n";
+			$arg2 = $char->{'name'};
+		}
+		if ($arg2 eq "none") {
+			undef $arg2;
+			message T("Opening rodex mail write box. No recipient specified.\n");
+		} else {
+			message TF("Opening rodex mail write box. Recipient: %s\n", $arg2);
 		}
 
-		message T("Opening rodex mail write box.\n");
 		$messageSender->rodex_open_write_mail($arg2);
 
 	} elsif ($arg1 eq 'cancel') {
@@ -6827,8 +7136,11 @@ sub cmdRodex {
 
 		} elsif ($arg2 eq "") {
 			error T("Syntax Error in function 'rodex settarget' (Set target of rodex mail)\n" .
-				"Usage: rodex settarget <player_name>\n");
+				"Usage: rodex settarget <player_name|self>\n");
 			return;
+		} elsif ($arg2 eq "self") {
+			debug "Send rodex mail to yourself\n";
+			$arg2 = $char->{'name'};
 		}
 
 		message TF("Setting target of rodex mail to '%s'.\n", $arg2);
@@ -7190,7 +7502,41 @@ sub cmdRodex {
 
 	} else {
 		error T("Syntax Error in function 'rodex' (rodex mail)\n" .
-			"Usage: rodex [<open|close|refresh|nextpage|maillist|read|getitems|getzeny|delete|write|cancel|settarget|settitle|setbody|setzeny|add|remove|itemslist|send>]\n");
+			"Usage: rodex [<open|close|list|refresh|nextpage|maillist|read|getitems|getzeny|delete|write|cancel|settarget|settitle|setbody|setzeny|add|remove|itemslist|send>]\n");
+	}
+}
+
+sub cmdRoulette {
+	my (undef, $args) = @_;
+	my ($command) = parseArgs( $args );
+
+	if (!$net || $net->getState() != Network::IN_GAME) {
+		error TF("You must be logged in the game to use this command '%s'\n", shift);
+		return;
+	}
+
+	if ( $command eq "open" ) {
+		message T("Sending Roulette Open\n");
+		$messageSender->sendRouletteWindowOpen();
+		$messageSender->sendRouletteInfoRequest();
+	} elsif ( $command eq "close" ) {
+		message T("Roulette System Closed\n");
+		$messageSender->sendRouletteClose();
+		undef %roulette;
+	} elsif ( ( $command eq "info" || $command eq "start" || $command eq "claim" ) && !defined($roulette{items}) ) {
+		error TF("Roulette: Error in command '%s', you must need open Roulette first'\n", $command);
+	} elsif ( $command eq "info" ) {
+		message T("Requesting Roulette Info\n");
+		$messageSender->sendRouletteInfoRequest();
+	}   elsif ( $command eq "start" ) {
+		message T("Sending Roulette Start (roll)\n");
+		$messageSender->sendRouletteStart();
+	} elsif ( $command eq "claim" ) {
+		message T("Trying to Claim Roulette Reward\n");
+		$messageSender->sendRouletteClaimPrize();
+	} else {
+		error T("Syntax Error in function 'roulette'\n" .
+				"roulette <open|info|close|start|claim>\n");
 	}
 }
 
@@ -7200,7 +7546,7 @@ sub cmdCancelTransaction {
 		return;
 	}
 
-	if ($ai_v{'npc_talk'}{'talk'} eq 'buy_or_sell') {
+	if ($ai_v{'npc_talk'}{'talk'} eq 'buy_or_sell' || $ai_v{'npc_talk'}{'talk'} eq 'store') {
 		cancelNpcBuySell();
 	} else {
 		error T("You are not on a sell or store npc interaction.\n");
@@ -7763,18 +8109,18 @@ sub cmdRevive {
 		$item = $char->inventory->getByNameID(7621);
 	} else {
 		error T("Error in 'revive' command (incorrect syntax)\n".
-				"revive [force|<item name>|<item ID>]\n");
+				"revive [force|\"<item_name>\"|<item_ID>]\n");
 		return;
 	}
 
 	if (!$item && $args[0] ne "force") {
 		error TF("Error in 'revive' command\n".
-				"Cannot use item %d in attempt to revive: item not found in inventory\n", $args[0]);
+				"Cannot use item '%s' in attempt to revive: item not found in inventory\n", $args[0]);
 		return;
 	}
 
 	if ($item && $args[0] ne "force") {
-		message TF("Trying to use item %s to self-revive\n", $item->name());
+		message TF("Trying to use item '%s' to self-revive\n", $item->name());
 	} else {
 		message TF("Trying to self-revive using 'force'\n");
 	}
