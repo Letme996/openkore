@@ -216,6 +216,7 @@ our @EXPORT = (
 	fromBase62
 	solveItemLink
 	solveMessage
+	solveMSG
 	absunit/,
 
 	# Npc buy and sell
@@ -1413,47 +1414,6 @@ sub actorListClearing {
 	undef @elementalsID;
 }
 
-sub avoidGM_talk {
-	return 0 if ($net->clientAlive() || !$config{avoidGM_talk});
-	my ($user, $msg) = @_;
-
-	# Check whether this "GM" is on the ignore list
-	# in order to prevent false matches
-	return 0 if (existsInList($config{avoidGM_ignoreList}, $user));
-
-	if ($user =~ /^([a-z]?ro)?-?(Sub)?-?\[?GM\]?/i || ($config{avoidGM_namePattern} && ($user =~ /$config{avoidGM_namePattern}/))) {
-		my %args = (
-			name => $user,
-		);
-		Plugins::callHook('avoidGM_talk', \%args);
-		return 1 if ($args{return});
-
-		warning T("Disconnecting to avoid GM!\n");
-		main::chatLog("k", TF("*** The GM %s talked to you, auto disconnected ***\n", $user));
-
-		warning TF("Disconnect for %s seconds...\n", $config{avoidGM_reconnect});
-		relog($config{avoidGM_reconnect}, 1);
-		return 1;
-	}
-	return 0;
-}
-
-sub avoidList_talk {
-	return 0 if ($net->clientAlive() || !$config{avoidList});
-	my ($user, $msg, $ID) = @_;
-	my $avoidPlayer = $avoid{Players}{lc($user)};
-	my $avoidID = $avoid{ID}{$ID};
-
-	if ($avoidPlayer->{disconnect_on_chat} || $avoidID->{disconnect_on_chat}) {
-		warning TF("Disconnecting to avoid %s!\n", $user);
-		main::chatLog("k", TF("*** %s talked to you, auto disconnected ***\n", $user));
-		warning TF("Disconnect for %s seconds...\n", $config{avoidList_reconnect});
-		relog($config{avoidList_reconnect}, 1);
-		return 1;
-	}
-	return 0;
-}
-
 sub calcStat {
 	my $damage = shift;
 	$totaldmg += $damage;
@@ -1550,6 +1510,8 @@ sub charSelectScreen {
 			$messageDeleteDate);
 		push @charNameIndices, $num;
 	}
+
+	return 0 if (exists $charSvrSet{sync_Count} && $charSvrSet{sync_received_characters} < $charSvrSet{sync_Count});
 
 	if (@charNames) {
 		my $msg =  center(T(" Character List "), 79, '-') ."\n";
@@ -2579,10 +2541,12 @@ sub headgearName {
 
 	my $itemID = $headgears_lut[$lookID];
 
-	if (!defined($itemID)) {
-		return T("Unknown lookID") . $lookID;
+	if (!$itemID or $itemID =~ /^#/) {
+		warning TF("Unknown lookID_%d. Need to update the file headgears.txt (from data.grf)\n", $lookID);
+		return T("Unknown lookID_") . $lookID;
 	}
 
+	warning TF("Unknown item (ID=%d). Need to update the file items.txt or headgears.txt (from data.grf)\n", $itemID) unless $items_lut{$itemID};
 	return main::itemName({nameID => $itemID});
 }
 
@@ -3985,7 +3949,7 @@ sub isSafeActorQuery {
 		if ($actor) {
 			# Do not AutoVivify here!
 			if (defined $actor->{statuses} && %{$actor->{statuses}}) {
-				if ( $actor->statusActive('EFFECTSTATE_SPECIALHIDING') || $actor->{type} == 111 || $actor->{type} == 139 || $actor->{type} == 2337 ) { # HIDDEN_ACTOR TYPES
+				if ( $actor->statusActive('EFFECTSTATE_SPECIALHIDING') || ($config{avoidHiddenActors} && ($actor->{type} == 111 || $actor->{type} == 139 || $actor->{type} == 2337)) ) { # HIDDEN_ACTOR TYPES
 					return 0;
 				}
 			}
@@ -4173,27 +4137,27 @@ sub avoidGM_near {
 		if ($config{avoidGM_near} == 1) {
 			# Mode 1: teleport & disconnect
 			useTeleport(1);
-			$msg = TF("GM %s (%d) is nearby, teleport & disconnect for %d seconds", $player->{name}, $player->{nameID}, $config{avoidGM_reconnect});
+			$msg = TF("GM '%s' (%d) is nearby (%s), teleport & disconnect for %d seconds", $player->{name}, $player->{nameID}, $field->baseName, $config{avoidGM_reconnect});
 			relog($config{avoidGM_reconnect}, 1);
 
 		} elsif ($config{avoidGM_near} == 2) {
 			# Mode 2: disconnect
-			$msg = TF("GM %s (%d) is nearby, disconnect for %s seconds", $player->{name}, $player->{nameID}, $config{avoidGM_reconnect});
+			$msg = TF("GM '%s' (%d) is nearby (%s), disconnect for %s seconds", $player->{name}, $player->{nameID}, $field->baseName, $config{avoidGM_reconnect});
 			relog($config{avoidGM_reconnect}, 1);
 
 		} elsif ($config{avoidGM_near} == 3) {
 			# Mode 3: teleport
 			useTeleport(1);
-			$msg = TF("GM %s (%d) is nearby, teleporting", $player->{name}, $player->{nameID});
+			$msg = TF("GM '%s' (%d) is nearby(%s), teleporting", $player->{name}, $player->{nameID}, $field->baseName);
 
 		} elsif ($config{avoidGM_near} == 4) {
 			# Mode 4: respawn
 			useTeleport(2);
-			$msg = TF("GM %s (%d) is nearby, respawning", $player->{name}, $player->{nameID});
+			$msg = TF("GM '%s' (%d) is nearby (%s), respawning", $player->{name}, $player->{nameID}, $field->baseName);
 		} elsif ($config{avoidGM_near} >= 5) {
 			# Mode 5: respawn & disconnect
 			useTeleport(2);
-			$msg = TF("GM %s (%d) is nearby, respawning & disconnect for %d seconds", $player->{name}, $player->{nameID}, $config{avoidGM_reconnect});
+			$msg = TF("GM '%s' (%d) is nearby (%s), respawning & disconnect for %d seconds", $player->{name}, $player->{nameID}, $field->baseName, $config{avoidGM_reconnect});
 			relog($config{avoidGM_reconnect}, 1);
 		}
 
@@ -4203,6 +4167,29 @@ sub avoidGM_near {
 		return 1;
 	}
 	return 0;
+}
+
+sub avoidGM_talk {
+	return 0 if ($net->clientAlive() || !$config{avoidGM_talk});
+	my ($player_name, $nameID) = @_;
+
+	# Check whether this "GM" is on the ignore list in order to prevent false matches
+	return 0 if (existsInList($config{avoidGM_ignoreList}, $player_name));
+
+	return 0 unless ($config{avoidGM_namePattern} ? $player_name =~ /$config{avoidGM_namePattern}/ : $player_name =~ /^([a-z]?ro)?-?(Sub)?-?\[?GM\]?/i);
+
+	my %args = (
+		name => $player_name,
+		ID => $nameID
+	);
+	Plugins::callHook('avoidGM_talk', \%args);
+	return 1 if ($args{return});
+
+	my $msg = TF("GM '%s' (%d) talked to you (%s), disconnect for %s seconds", $player_name, $nameID, $field->baseName, $config{avoidGM_reconnect});
+	warning "$msg\n";
+	chatLog("k", "*** $msg ***\n");
+	relog($config{avoidGM_reconnect}, 1);
+	return 1;
 }
 
 ##
@@ -4242,7 +4229,7 @@ sub avoidList_near {
 			|| ($avoidJob && $avoidJob->{teleport_on_sight} &&  $avoidJob->{disconnect_on_sight}) ) {
 			# like avoidGM_near Mode 1: teleport & disconnect
 			useTeleport(1);
-			$msg = TF("Player %s (%d, %s) is nearby, teleport & disconnect for %d seconds", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $config{avoidList_reconnect});
+			$msg = TF("Player %s (%d, %s) is nearby (%s), teleport & disconnect for %d seconds", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $field->baseName, $config{avoidList_reconnect});
 			relog($config{avoidList_reconnect}, 1);
 			$return = 1;
 
@@ -4251,27 +4238,27 @@ sub avoidList_near {
 			|| ($avoidJob && $avoidJob->{teleport_on_sight} &&  $avoidJob->{disconnect_on_sight}) ) {
 			# like avoidGM_near Mode 5: respawn & disconnect
 			useTeleport(2);
-			$msg = TF("Player %s (%d, %s) is nearby, respawning & disconnect for %d seconds", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $config{avoidList_reconnect});
+			$msg = TF("Player %s (%d, %s) is nearby (%s), respawning & disconnect for %d seconds", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $field->baseName, $config{avoidList_reconnect});
 			relog($config{avoidList_reconnect}, 1);
 			$return = 1;
 
 		} elsif ( !$net->clientAlive() && ( ($avoidPlayer && $avoidPlayer->{disconnect_on_sight}) ||
 			($avoidID && $avoidID->{disconnect_on_sight}) && ($avoidJob && $avoidJob->{disconnect_on_sight}) ) ) {
 			# like avoidGM_near Mode 2: disconnect
-			$msg = TF("Player %s (%d, %s) is nearby, disconnect for %s seconds", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $config{avoidList_reconnect});
+			$msg = TF("Player %s (%d, %s) is nearby (%s), disconnect for %s seconds", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $field->baseName, $config{avoidList_reconnect});
 			relog($config{avoidList_reconnect}, 1);
 			$return = 1;
 
 		} elsif ( ($avoidPlayer && $avoidPlayer->{teleport_on_sight} == 1) || ($avoidID && $avoidID->{teleport_on_sight} == 1) || ($avoidJob && $avoidJob->{teleport_on_sight} == 1) ) {
 			# like avoidGM_near Mode 3: teleport
 			useTeleport(1);
-			$msg = TF("Player %s (%d, %s) is nearby, teleporting", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}});
+			$msg = TF("Player %s (%d, %s) is nearby (%s), teleporting", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $field->baseName);
 			$return = 1;
 
 		} elsif ( ($avoidPlayer && $avoidPlayer->{teleport_on_sight} == 2) || ($avoidID && $avoidID->{teleport_on_sight} == 2) || ($avoidJob && $avoidJob->{teleport_on_sight} == 2) ) {
 			# like avoidGM_near Mode 4: respawn
 			useTeleport(2);
-			$msg = TF("Player %s (%d, %s) is nearby, respawning", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}});
+			$msg = TF("Player %s (%d, %s) is nearby (%s), respawning", $player->{name}, $player->{nameID}, $jobs_lut{$player->{jobID}}, $field->baseName);
 			$return = 1;
 		}
 
@@ -4289,16 +4276,30 @@ sub avoidList_ID {
 
 	my $avoidID = unpack("V", shift);
 	if ($avoid{ID}{$avoidID} && $avoid{ID}{$avoidID}{disconnect_on_sight}) {
-		warning TF("%s is nearby, disconnecting...\n", $avoidID);
-		chatLog("k", TF("*** Found %s nearby and disconnected ***\n", $avoidID));
-		warning TF("Disconnect for %s seconds...\n", $config{avoidList_reconnect});
+		my $msg = TF("Player with ID %s is nearby (%s), disconnect for %s seconds", $avoidID, $field->baseName, $config{avoidList_reconnect});
+		warning "$msg\n";
+		chatLog("k", "*** $msg ***\n");
 		relog($config{avoidList_reconnect}, 1);
 		return 1;
 	}
 	return 0;
 }
 
-my %vcont;
+sub avoidList_talk {
+	return 0 if ($net->clientAlive() || !$config{avoidList});
+	my ($player_name, $nameID) = @_;
+	my $avoidPlayer = $avoid{Players}{lc($player_name)};
+	my $avoidID = $avoid{ID}{$nameID};
+
+	if ($avoidPlayer->{disconnect_on_chat} || $avoidID->{disconnect_on_chat}) {
+		my $msg = TF("Player %s (%d) talked to you (%s), disconnect for %d seconds", $player_name, $nameID, $field->baseName, $config{avoidList_reconnect});
+		warning "$msg\n";
+		chatLog("k", "*** $msg ***\n");
+		relog($config{avoidList_reconnect}, 1);
+		return 1;
+	}
+	return 0;
+}
 
 sub compilePortals {
 	my $checkOnly = shift;
@@ -4419,19 +4420,6 @@ sub redirectXKoreMessages {
 	$message =~ s/\n*$//s;
 	$message =~ s/\n/\\n/g;
 	sendMessage($messageSender, "k", $message);
-}
-
-sub validate {
-	my $user = shift;
-	return 1 if ($config{'pmNoValidate'});
-	push (@{$vcont{'members'}}, $user) if !$vcont{'mem'}{$user};
-	$vcont{'mem'}{$user} = time;
-	return 0x00000 if ((@{$vcont{'members'}} >= 0x00004) && (time - $vcont{'mem'}{@{$vcont{'members'}}[0]}) < (0x000f << 0x0002));
-	shift(@{$vcont{'members'}}) if (@{$vcont{'members'}} >= 0x000000004);
-	delete $vcont{'mem'}{@{$vcont{'members'}}[0]} if (@{$vcont{'members'}} >= 0x0000004);
-	if ($vcont{'ftime'}) { $vcont{'cnt'}++; } else { $vcont{'ftime'}=time; }
-	return 0x00000 if ($vcont{'cnt'} > 0x000A) && (($vcont{'cnt'}/(time - $vcont{'ftime'})) > 0x0001);
-	return 0x1;
 }
 
 sub monKilled {
@@ -5504,6 +5492,28 @@ sub fromBase62 {
     return $base10;
 }
 
+sub solveMSG {
+	my $msg = shift;
+	my $id;
+
+	if ($msg =~ /<MSG>(\d+)<\/MSG>/) {
+		$id = $1 + 1;
+		if ($msgTable[$id]) { # show message from msgstringtable.txt
+			debug "Replace the original message with: '$msgTable[$id]'\n";
+			$msg = $msgTable[$id];
+		}
+	} elsif ($msg =~ /<MSG>(\d+),(\d+)<\/MSG>/) {
+		$id = $1 + 1;
+		if ($msgTable[$id]) {
+			debug "Replace the original message with: '$msgTable[$id]'\n";
+			$msg = sprintf ($msgTable[$id], $2);
+		}
+	}
+	warning TF("Unknown msgid: %d. Need to update the file msgstringtable.txt (from data.grf)\n", --$id) if !$msgTable[$id];
+
+	return $msg;
+}
+
 # Solve each <ITEML>.*</ITEML> to kore-style item name
 sub solveItemLink {
 	my ($itemlstr) = @_;
@@ -5539,9 +5549,12 @@ sub solveItemLink {
 sub solveMessage {
 	my ($msg) = @_;
 
+	# Example:
 	# <ITEML>.*</ITEML> to readable item name
-	if ($msg =~ /<ITEML>([a-zA-Z0-9\%\&\(\,\+\*]*)<\/ITEML>/) {
-		$msg =~ s/<ITEML>([a-zA-Z0-9\%\&\(\,\+\*]*)<\/ITEML>/solveItemLink($1)/eg;
+	# Sell<ITEML>0000y1kk&0g)00)00)00)00+05,00-01+0B,00-0m</ITEML>500k
+	# S><ITEML>0000y1nC&05)00)00+0h,00-0C+0F,00-0h</ITEML><ITEML>000021jM&01)00)00+0h,00-0N+0B,00-0g</ITEML><ITEML>000021jM&01)00)00+0f,00-02+0B,00-0e</ITEML>
+	if ($msg =~ /<ITEML>([a-zA-Z0-9%&(),+\-*]*)<\/ITEML>/) {
+		$msg =~ s/<ITEML>([a-zA-Z0-9%&(),+\-*]*)<\/ITEML>/solveItemLink($1)/eg;
 	}
 	return $msg;
 }

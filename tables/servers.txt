@@ -236,7 +236,7 @@ secureLogin_account 0
 serverEncoding Western
 gameGuard 0
 addTableFolders pRO
-charBlockSize 144
+charBlockSize 147
 pinCode 1
 charDeleteDateType 1
 rankingSystemType 1
@@ -255,7 +255,7 @@ secureLogin_account 0
 serverEncoding Western
 gameGuard 0
 addTableFolders pRO
-charBlockSize 144
+charBlockSize 147
 pinCode 1
 charDeleteDateType 1
 rankingSystemType 1
@@ -289,37 +289,22 @@ recvpackets recvpackets.txt
 addTableFolders twRO
 captcha 0
 
-# https://ro.exe.in.th/
-[Thailand - tRO: Revo Classic]
-ip 103.55.55.199
-port 6900
+# http://ro.gnjoy.in.th/
+[Thailand - tRO: Chaos, Thor, Iris, Odin]
+ip thro-acc1.gnjoy.in.th
+port 50001
 master_version 7
 version 24
 serverType tRO
 serverEncoding Thai
 addTableFolders tRO
-charBlockSize 146
+charBlockSize 175
 gameGuard 0
 charDeleteDateType 1
 blockingPlayerCancel 1
 rankingSystemType 1
 itemListType 1
-
-# https://ro.exe.in.th/
-[Thailand - tRO: Revo Jellopy]
-ip 103.55.55.200
-port 6900
-master_version 7
-version 24
-serverType tRO
-serverEncoding Thai
-addTableFolders tRO
-charBlockSize 146
-gameGuard 0
-charDeleteDateType 1
-blockingPlayerCancel 1
-rankingSystemType 1
-itemListType 1
+pinCode 1
 
 #####################
 # Bottable Private Server
@@ -370,8 +355,7 @@ master_version 2
 serverType RMS
 serverEncoding Western
 charBlockSize 147
-addTableFolders kRO/RagexeRE_2014_10_22b;translated;translated/kRO_english;kRO
-#clientHash 6e1d7aae3838cd7aec434cd10ef861e9
+addTableFolders pserver/RMS;kRO/RagexeRE_2014_10_22b;translated/kRO_english;kRO
 clientHash 82d12c914f5ad48fd96fcf7ef4cc492d
 pinCode 1
 
@@ -384,7 +368,7 @@ master_version 2
 serverType RMS
 serverEncoding Western
 charBlockSize 147
-addTableFolders kRO/RagexeRE_2014_10_22b;translated;translated/kRO_english;kRO
+addTableFolders pserver/RMS;kRO/RagexeRE_2014_10_22b;translated/kRO_english;kRO
 clientHash 82d12c914f5ad48fd96fcf7ef4cc492d
 pinCode 1
 

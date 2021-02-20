@@ -33,7 +33,7 @@ use Digest::MD5;
 use Math::BigInt;
 
 # TODO: remove 'use Globals' from here, instead pass vars on
-use Globals qw(%config $bytesSent %packetDescriptions $enc_val1 $enc_val2 $char $masterServer $syncSync $accountID %timeout %talk $skillExchangeItem $net $rodexList $rodexWrite %universalCatalog %rpackets $mergeItemList $repairList);
+use Globals qw(%config $bytesSent %packetDescriptions $enc_val1 $enc_val2 $char $masterServer $syncSync $accountID %timeout %talk $skillExchangeItem $net $rodexList $rodexWrite %universalCatalog %rpackets $mergeItemList $repairList %cashShop);
 
 use I18N qw(bytesToString stringToBytes);
 use Utils qw(existsInList getHex getTickCount getCoordString makeCoordsDir);
@@ -123,7 +123,7 @@ sub encryptMessageID {
 			$messageID = ($messageID ^ (($self->{encryption}->{crypt_key} >> 16) & 0x7FFF)) & 0xFFFF;
 			$$r_message = pack("v", $messageID) . substr($$r_message, 2);
 
-			# Debug Log	
+			# Debug Log
 			debug (sprintf("Encrypted MID : [%04X]->[%04X] / KEY : [0x%04X]->[0x%04X]\n", $oldMID, $messageID, $oldKey, ($self->{encryption}->{crypt_key} >> 16) & 0x7FFF), "sendPacket", 0) if ($config{debugPacket_sent} || ($config{'debugPacket_include_dumpMethod'} && !existsInList($config{debugPacket_exclude}, $messageID2) && existsInList($config{'debugPacket_include'}, $messageID2)));
 		}
 	} else {
@@ -619,10 +619,9 @@ sub reconstruct_private_message {
 	$args->{privMsgUser} = stringToBytes($args->{privMsgUser});
 }
 
-sub sendPrivateMsg
-{
+sub sendPrivateMsg {
 	my ($self, $user, $message) = @_;
-	Misc::validate($user)?$self->sendToServer($self->reconstruct({ switch => 'private_message', privMsg => $message, privMsgUser => $user, })):return;
+	$self->sendToServer($self->reconstruct({ switch => 'private_message', privMsg => $message, privMsgUser => $user, }));
 }
 
 sub sendLook {
@@ -1107,6 +1106,7 @@ sub sendCashShopOpen {
 sub sendCashShopClose {
 	my ($self) = @_;
 	$self->sendToServer($self->reconstruct({switch => 'cash_shop_close'}));
+	undef $cashShop{points};
 	debug "Requesting sendCashShopClose\n", "sendPacket", 2;
 }
 
@@ -2552,7 +2552,7 @@ sub sendSellBulk {
 		items => \@{$r_array},
 	}));
 
-	debug("Sent bulk buy: " . getHex($_->{ID}) . " x $_->{amount}\n", "sendPacket", 2) foreach (@{$r_array});
+	debug("Sent bulk sell: " . getHex($_->{ID}) . " x $_->{amount}\n", "sendPacket", 2) foreach (@{$r_array});
 }
 
 sub reconstruct_sell_bulk {
@@ -2562,11 +2562,11 @@ sub reconstruct_sell_bulk {
 }
 
 sub sendAchievementGetReward {
-	my ($self, $ach_id) = @_;
+	my ($self, $achievementID) = @_;
 
 	$self->sendToServer($self->reconstruct({
 		switch => 'achievement_get_reward',
-		ach_id => $ach_id,
+		achievementID => $achievementID,
 	}));
 }
 
@@ -3379,7 +3379,7 @@ sub sendBuyBulkMarket {
 		items => \@{$r_array},
 	}));
 
-	debug("Sent bulk buy: $_->{itemID} x $_->{amount}\n", "sendPacket", 2) foreach (@{$r_array});
+	debug("Sent bulk buy market: $_->{itemID} x $_->{amount}\n", "sendPacket", 2) foreach (@{$r_array});
 }
 
 sub reconstruct_buy_bulk_market {
